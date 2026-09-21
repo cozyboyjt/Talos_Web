@@ -12,6 +12,7 @@ import { ExploreLibraryButton } from './ExploreLibraryButton';
 import { GeneticTraitSidePanel } from './GeneticTraitTooltip';
 import { CornSeedTrait } from '../data/cornTraits';
 import { getTraitAtmosphere } from '../utils/traitAtmosphere';
+import { HERO_IMAGE } from '../data/heroImage';
 import {
   heroHeadlineVariants,
   heroLineVariants,
@@ -130,17 +131,21 @@ function getTrackLayout(storyVh: number) {
  * The scroll track's length depends on the breakpoint, so cross it and the
  * whole experience remounts with the right layout (rare: only on resize).
  */
-export function ParallaxExperience() {
+export function ParallaxExperience({ siteReady = true }: { siteReady?: boolean }) {
   const compact = !useIsDesktop();
-  return <ParallaxTrack key={compact ? 'compact' : 'desktop'} compact={compact} />;
+  return (
+    <ParallaxTrack key={compact ? 'compact' : 'desktop'} compact={compact} siteReady={siteReady} />
+  );
 }
 
 interface ParallaxTrackProps {
   compact: boolean;
+  /** False while the preloader covers the page; the hero's entrance waits for it. */
+  siteReady: boolean;
   key?: string;
 }
 
-function ParallaxTrack({ compact }: ParallaxTrackProps) {
+function ParallaxTrack({ compact, siteReady }: ParallaxTrackProps) {
   const storyLayout = getStoryLayout(compact);
   const {
     TRACK_VH, K1, K2, SETTLE, STORY_START, STORY_END, HANDOFF_START, HANDOFF_END,
@@ -245,6 +250,9 @@ function ParallaxTrack({ compact }: ParallaxTrackProps) {
   // Story video loads only once the story is close, and stops after it hands
   // off to the Insights carousel.
   const isDesktop = !compact;
+  // The header's glass pill re-blurs the (still animating) hero behind it on
+  // every frame of its fade-in, which stutters; skip the blur until it lands.
+  const [isHeaderSettled, setIsHeaderSettled] = useState(false);
   const [isStoryNear, setIsStoryNear] = useState(false);
   // Latches on the first approach so the overlay chunk loads before the button
   // is reachable, then stays mounted (its exit animation needs it).
@@ -962,10 +970,18 @@ function ParallaxTrack({ compact }: ParallaxTrackProps) {
               }}
               className="absolute -inset-[6%] z-0 pointer-events-none"
             >
+              {/* Preloader hand-off: the whole backdrop settles from a slight zoom while
+                  a dark veil lifts. Separate from the scroll-driven scale/opacity above. */}
+              <motion.div
+                initial={{ scale: 1.12 }}
+                animate={{ scale: siteReady ? 1 : 1.12 }}
+                transition={{ duration: 2.2, ease: [0.16, 1, 0.3, 1] }}
+                className="absolute inset-0 will-change-transform"
+              >
               <img
-                src="/hero.webp"
-                srcSet="/hero-mobile.webp 1400w, /hero.webp 2912w"
-                sizes="100vw"
+                src={HERO_IMAGE.src}
+                srcSet={HERO_IMAGE.srcSet}
+                sizes={HERO_IMAGE.sizes}
                 alt="Talos Calisthenics Anatomical Sculpture"
                 referrerPolicy="no-referrer"
                 className="w-full h-full object-cover object-center"
@@ -1009,6 +1025,14 @@ function ParallaxTrack({ compact }: ParallaxTrackProps) {
                 className="absolute inset-0 bg-gradient-to-r from-[#050505]/60 via-transparent to-[#050505]/30 pointer-events-none"
                 aria-hidden="true"
               />
+                <motion.div
+                  initial={{ opacity: 0.55 }}
+                  animate={{ opacity: siteReady ? 0 : 0.55 }}
+                  transition={{ duration: 2.2, ease: [0.16, 1, 0.3, 1] }}
+                  className="absolute inset-0 bg-black pointer-events-none"
+                  aria-hidden="true"
+                />
+              </motion.div>
             </motion.div>
 
             {/* Hero Particles: Midground layer with reactive mouse drift */}
@@ -1018,6 +1042,9 @@ function ParallaxTrack({ compact }: ParallaxTrackProps) {
                 x: heroMouseParticlesX,
                 y: combinedHeroParticlesY,
               }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: siteReady ? 1 : 0 }}
+              transition={{ duration: 1.8, delay: siteReady ? 0.7 : 0 }}
               className="absolute inset-0 z-10 pointer-events-none"
             >
               <ParticleField active={isHeroActive} />
@@ -1069,7 +1096,7 @@ function ParallaxTrack({ compact }: ParallaxTrackProps) {
                 id="hero-title"
                 variants={heroHeadlineVariants}
                 initial="hidden"
-                animate={isHeroRevealed ? 'visible' : 'hidden'}
+                animate={isHeroRevealed && siteReady ? 'visible' : 'hidden'}
                 className="w-full font-display font-medium text-[clamp(1.5rem,3.8vw,4.85rem)] tracking-[0.24em] sm:tracking-[0.34em] md:tracking-[0.42em] lg:tracking-[0.48em] pl-[0.24em] sm:pl-[0.34em] md:pl-[0.42em] lg:pl-[0.48em] uppercase leading-[0.92] sm:leading-[0.96] md:leading-[1.0] select-none will-change-[filter,opacity,transform]"
                 style={{
                   transform: 'translateZ(18px)',
@@ -1101,7 +1128,7 @@ function ParallaxTrack({ compact }: ParallaxTrackProps) {
                     radius={140}
                     lerpFactor={0.2}
                     letterClassName="text-metallic-headline"
-                    idleShine
+                    idleShine={siteReady}
                   />
                 </motion.span>
               </motion.h1>
@@ -1522,14 +1549,18 @@ function ParallaxTrack({ compact }: ParallaxTrackProps) {
           id="main-header"
           initial={{ opacity: 0, y: -10 }}
           animate={{
-            opacity: isExploreActive || isFeaturesExploreActive ? 0 : 1,
-            y: isExploreActive || isFeaturesExploreActive ? -20 : 0,
-            pointerEvents: isExploreActive || isFeaturesExploreActive ? 'none' : 'auto',
+            opacity: isExploreActive || isFeaturesExploreActive || !siteReady ? 0 : 1,
+            y: isExploreActive || isFeaturesExploreActive ? -20 : siteReady ? 0 : -10,
+            pointerEvents: isExploreActive || isFeaturesExploreActive || !siteReady ? 'none' : 'auto',
           }}
           transition={{
             duration: isExploreActive || isFeaturesExploreActive ? 0.35 : 2.2,
+            // Measured from the preloader hand-off (siteReady).
             delay: isExploreActive || isFeaturesExploreActive ? 0 : 1.3,
             ease: [0.16, 1, 0.3, 1],
+          }}
+          onAnimationComplete={() => {
+            if (siteReady) setIsHeaderSettled(true);
           }}
           className="absolute top-0 left-0 right-0 z-40 w-full py-6 md:py-8 will-change-[opacity,transform]"
         >
@@ -1562,7 +1593,11 @@ function ParallaxTrack({ compact }: ParallaxTrackProps) {
               />
 
               {/* Glass surface */}
-              <span className="glass absolute inset-0 rounded-full" aria-hidden="true" />
+              <span
+                className="glass absolute inset-0 rounded-full"
+                style={isHeaderSettled ? undefined : { backdropFilter: 'none', WebkitBackdropFilter: 'none' }}
+                aria-hidden="true"
+              />
 
               <span className="relative font-display font-medium text-[10px] sm:text-[11px] tracking-[0.16em] text-white/85 group-hover:text-white uppercase whitespace-nowrap transition-colors duration-200">
                 <span className="sm:hidden">Get Access</span>

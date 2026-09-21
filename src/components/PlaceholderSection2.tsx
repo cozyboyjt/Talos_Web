@@ -1,8 +1,6 @@
-import { useState } from 'react';
-import { motion, MotionValue, AnimatePresence } from 'motion/react';
-import { Check } from 'lucide-react';
+import { motion, MotionValue } from 'motion/react';
 import { ParticleField } from './ParticleField';
-import { CinematicDownloadButton } from './CinematicDownloadButton';
+import { EarlyAccessSignup } from './EarlyAccessSignup';
 
 interface PlaceholderSection2Props {
   active?: boolean;
@@ -11,15 +9,6 @@ interface PlaceholderSection2Props {
 }
 
 export function PlaceholderSection2({ active = true, contentY, contentOpacity }: PlaceholderSection2Props) {
-  const [isNotified, setIsNotified] = useState(false);
-
-  const handleNotify = () => {
-    setIsNotified(true);
-    setTimeout(() => {
-      setIsNotified(false);
-    }, 3000);
-  };
-
   return (
     <div
       id="placeholder-section-2-container"
@@ -62,36 +51,17 @@ export function PlaceholderSection2({ active = true, contentY, contentOpacity }:
           id="download-app-headline"
           className="font-display font-medium text-2xl sm:text-3xl md:text-4xl lg:text-5xl tracking-wide uppercase text-white leading-[1.1] drop-shadow-[0_15px_35px_rgba(0,0,0,0.9)] select-none text-center"
         >
-          Download the app
+          Join the waitlist
           <br />
-          to get started
+          for early access.
         </h2>
 
         {/* Get Early Access — Cinematic, high-tech biotechnology interactive CTA
             featuring cursor-tracking caustic light, conic laser perimeter beam,
             anamorphic lens flare, and multi-stage volumetric bloom. */}
         <div className="mt-10 sm:mt-12">
-          <CinematicDownloadButton
-            id="btn-get-early-access"
-            onClick={handleNotify}
-          />
+          <EarlyAccessSignup />
         </div>
-
-        {/* Toast notification feedback on button click */}
-        <AnimatePresence>
-          {isNotified && (
-            <motion.div
-              initial={{ opacity: 0, y: 12, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -8, scale: 0.95 }}
-              transition={{ duration: 0.25 }}
-              className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 text-white text-xs font-medium shadow-lg shadow-black/40"
-            >
-              <Check className="w-3.5 h-3.5 text-zinc-200" />
-              <span>You're on the list — we'll be in touch soon!</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </motion.div>
     </div>
   );
