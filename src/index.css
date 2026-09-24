@@ -59,7 +59,11 @@
   }
 
   /* Soft, faint editorial glow shadow for monumental typography */
+  /* Own compositor layer: this copy's five blurred drop-shadows are expensive,
+     and without a layer of its own they were re-rendered every frame that the
+     letters above it animated (hover / idle shine), dropping the hero to ~25fps. */
   .headline-editorial-glow {
+    will-change: transform;
     filter:
       drop-shadow(0 0 1.5px rgba(255, 255, 255, 0.40))
       drop-shadow(0 0 18px rgba(255, 255, 255, 0.15))
