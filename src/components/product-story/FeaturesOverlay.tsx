@@ -14,10 +14,13 @@ import {
 } from 'motion/react';
 import { X } from 'lucide-react';
 import { FeatureCopy } from './FeatureCopy';
+import { TALOS_FEATURES } from './featuresData';
 import { PhoneMockup } from './PhoneMockup';
 import { PhoneVideo } from './PhoneVideo';
 import { StageBackdrop } from './StageBackdrop';
 import {
+  COMPACT_PHONE_BAND,
+  FEATURES_COMPACT_PHONE,
   FEATURES_ENTER,
   FEATURES_EXIT,
   FEATURES_STAGES,
@@ -69,8 +72,12 @@ function OverlayContent({ onClose }: { onClose: () => void }) {
   });
   const progress = useSpring(scrollYProgress, SCROLL_SPRING);
 
-  const [activeIndex, setActiveIndex] = useState(0);
-  useMotionValueEvent(progress, 'change', (value) => setActiveIndex(stageIndexFor(value)));
+  // Desktop: the scroll position picks the feature. Compact (phones/tablets):
+  // there is no scrolling here at all, the capsules are tapped instead.
+  const [scrollIndex, setScrollIndex] = useState(0);
+  const [tappedIndex, setTappedIndex] = useState(0);
+  useMotionValueEvent(progress, 'change', (value) => setScrollIndex(stageIndexFor(value)));
+  const activeIndex = isDesktop ? scrollIndex : tappedIndex;
 
   // Time-based entrance: the phone glides right and the first feature's copy
   // comes in as soon as the overlay opens.
@@ -93,8 +100,25 @@ function OverlayContent({ onClose }: { onClose: () => void }) {
   }, [enter, isPresent, reducedMotion, safeToRemove]);
 
   const phoneOpacity = useMotionValue(1);
-  const phoneScale = useTransform(enter, (v) => (isDesktop ? 1 : 1 - v * 0.4));
-  const phoneY = useTransform(enter, (v) => (isDesktop ? 0 : -v * window.innerHeight * 0.12));
+  // Compact: the phone starts in the story's own band (no jump on open), then
+  // shrinks and moves so it fills the space above the copy block.
+  const compactTarget = () => {
+    const H = window.innerHeight;
+    const cfg = FEATURES_COMPACT_PHONE;
+    const pad = Math.min(cfg.copyBottom.maxPx, Math.max(cfg.copyBottom.minPx, H * cfg.copyBottom.vh));
+    const bottom = H - pad - cfg.copyHeightPx - cfg.gapPx;
+    const height = Math.max(120, bottom - cfg.topPx);
+    const bandHeight = H * (1 - (COMPACT_PHONE_BAND.topPct + COMPACT_PHONE_BAND.bottomPct) / 100);
+    const bandCenter = H * ((COMPACT_PHONE_BAND.topPct + (100 - COMPACT_PHONE_BAND.bottomPct)) / 200);
+    return {
+      scale: Math.min(1, height / bandHeight),
+      dy: cfg.topPx + height / 2 - bandCenter,
+    };
+  };
+  const phoneScale = useTransform(enter, (v) =>
+    isDesktop ? 1 : 1 - v * (1 - compactTarget().scale)
+  );
+  const phoneY = useTransform(enter, (v) => (isDesktop ? 0 : v * compactTarget().dy));
   const phoneX = useTransform(enter, (v) =>
     isDesktop ? `${v * FEATURES_ENTER.phoneShiftVw}vw` : '0vw'
   );
@@ -161,16 +185,35 @@ function OverlayContent({ onClose }: { onClose: () => void }) {
       <div
         ref={scrollerRef}
         tabIndex={-1}
-        className="absolute inset-0 overflow-y-auto overscroll-contain outline-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className={`absolute inset-0 overscroll-contain outline-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+          isDesktop ? 'overflow-y-auto' : 'overflow-hidden'
+        }`}
       >
-        <div ref={innerRef} style={{ height: `${FEATURES_VH}vh` }} className="relative">
+        <div
+          ref={innerRef}
+          style={{ height: isDesktop ? `${FEATURES_VH}vh` : '100svh' }}
+          className="relative"
+        >
           <div className="sticky top-0 h-[100svh] w-full overflow-hidden">
             <StageBackdrop carryOver={false} />
 
-            {/* Phone: same size/position as the story's, then glides right */}
-            <div className="absolute inset-0 z-20 flex items-center justify-center">
-              <motion.div style={{ x: phoneX }}>
-                <PhoneMockup opacity={phoneOpacity} scale={phoneScale} y={phoneY}>
+            {/* Phone: same size/position as the story's, then glides right (desktop)
+                / up into the top half (compact) */}
+            <div
+              className="absolute inset-x-0 z-20 flex items-center justify-center"
+              style={
+                isDesktop
+                  ? { top: 0, bottom: 0 }
+                  : { top: `${COMPACT_PHONE_BAND.topPct}%`, bottom: `${COMPACT_PHONE_BAND.bottomPct}%` }
+              }
+            >
+              <motion.div style={{ x: phoneX }} className={isDesktop ? undefined : 'h-full'}>
+                <PhoneMockup
+                  opacity={phoneOpacity}
+                  scale={phoneScale}
+                  y={phoneY}
+                  sizeClassName={isDesktop ? undefined : 'h-full'}
+                >
                   <PhoneVideo
                     videoRef={unusedPhoneVideoRef}
                     stages={FEATURES_STAGES}
@@ -192,16 +235,16 @@ function OverlayContent({ onClose }: { onClose: () => void }) {
                 className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/85 to-transparent lg:hidden"
                 aria-hidden="true"
               />
-              <div className="relative mx-auto h-full max-w-7xl px-6 sm:px-12 lg:px-16 grid lg:grid-cols-12 items-end lg:items-center pb-16 lg:pb-0">
+              <div className="relative mx-auto h-full max-w-7xl px-6 sm:px-12 lg:px-16 grid lg:grid-cols-12 items-end lg:items-center pb-[clamp(2.75rem,9svh,6rem)] lg:pb-0">
                 <div className="lg:col-start-1 lg:col-span-5 flex justify-center lg:justify-start">
-                  <FeatureCopy activeIndex={activeIndex} />
+                  <FeatureCopy activeIndex={activeIndex} showProgress={isDesktop} />
                 </div>
               </div>
             </motion.div>
 
             {/* Scroll hint: text only, fades once you start scrolling. */}
             <motion.div
-              style={{ opacity: hintOpacity }}
+              style={{ opacity: hintOpacity, display: isDesktop ? undefined : 'none' }}
               className="absolute bottom-5 left-0 right-0 z-30 flex justify-center pointer-events-none select-none"
               aria-hidden="true"
             >
@@ -212,6 +255,37 @@ function OverlayContent({ onClose }: { onClose: () => void }) {
           </div>
         </div>
       </div>
+
+      {/* Compact: pick a feature with 1 / 2 / 3, inline with the close button */}
+      {!isDesktop && (
+        <motion.div
+          style={{ opacity: copyOpacity }}
+          className="absolute top-6 left-6 sm:top-8 sm:left-8 z-50 flex h-14 items-center gap-2"
+          role="tablist"
+          aria-label="Features"
+        >
+          {TALOS_FEATURES.map((item, index) => {
+            const isActive = index === activeIndex;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                aria-label={`Feature ${index + 1}: ${item.title}`}
+                onClick={() => setTappedIndex(index)}
+                className={`glass flex h-11 w-11 items-center justify-center rounded-full font-display text-sm font-medium transition-all duration-300 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 ${
+                  isActive
+                    ? 'text-white !border-emerald-400/50 !bg-emerald-500/20 shadow-[0_0_18px_rgba(34,197,94,0.25)]'
+                    : 'text-white/55 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                {index + 1}
+              </button>
+            );
+          })}
+        </motion.div>
+      )}
 
       <button
         id="close-features-overlay-btn"

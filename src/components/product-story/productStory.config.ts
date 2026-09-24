@@ -308,3 +308,30 @@ export const DOWNLOAD_CARRYOVER = {
   /** Scroll distance (fraction of the whole track) the fade-in starts before the carousel ends. */
   leadProgress: 0.05,
 } as const;
+
+// ---------------------------------------------------------------------------
+// Compact (< lg) phone layout
+// ---------------------------------------------------------------------------
+/**
+ * The story's phone lives in this vertical band on compact screens (% of the
+ * screen height, measured from the top / bottom edge). The features overlay
+ * starts its phone in exactly the same band so opening it doesn't jump.
+ */
+export const COMPACT_PHONE_BAND = { topPct: 29, bottomPct: 12 } as const;
+
+/**
+ * Where the phone ends up once the features overlay has opened on compact
+ * screens. It is sized to fill the space between the top controls and the copy
+ * block, so it is as large as it can be on any screen height without touching
+ * the text.
+ */
+export const FEATURES_COMPACT_PHONE = {
+  /** Top of the phone, clear of the 1/2/3 buttons and the close button (px). */
+  topPx: 96,
+  /** Estimated height of the tallest copy block (category + title + paragraph) (px). */
+  copyHeightPx: 175,
+  /** Minimum gap between the phone's bottom edge and the copy (px). */
+  gapPx: 28,
+  /** Copy block's bottom padding: clamp(minPx, vh * screenHeight, maxPx). Mirrors FeaturesOverlay. */
+  copyBottom: { minPx: 44, vh: 0.09, maxPx: 96 },
+} as const;

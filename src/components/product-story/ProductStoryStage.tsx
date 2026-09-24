@@ -16,6 +16,7 @@ import {
   INTRO_END,
   INTRO_END_HYSTERESIS,
   PRODUCT_VIDEO,
+  COMPACT_PHONE_BAND,
   getStoryLayout,
 } from './productStory.config';
 import { useCoordinatedPlayback } from './useLazyVideo';
@@ -128,8 +129,13 @@ export function ProductStoryStage({
       <div
         className={
           compact
-            ? 'absolute inset-x-0 top-[29%] bottom-[12%] z-20 flex items-center justify-center'
+            ? 'absolute inset-x-0 z-20 flex items-center justify-center'
             : 'absolute inset-0 z-20 flex items-center justify-center'
+        }
+        style={
+          compact
+            ? { top: `${COMPACT_PHONE_BAND.topPct}%`, bottom: `${COMPACT_PHONE_BAND.bottomPct}%` }
+            : undefined
         }
       >
         <PhoneMockup

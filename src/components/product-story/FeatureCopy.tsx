@@ -3,6 +3,8 @@ import { TALOS_FEATURES } from './featuresData';
 
 interface FeatureCopyProps {
   activeIndex: number;
+  /** False hides the counter + capsules (compact screens show numbered buttons up top instead). */
+  showProgress?: boolean;
 }
 
 const copyVariants = {
@@ -36,7 +38,7 @@ const itemVariants = {
  * active feature stage changes; a row of capsules shows which of the features
  * you're on.
  */
-export function FeatureCopy({ activeIndex }: FeatureCopyProps) {
+export function FeatureCopy({ activeIndex, showProgress = true }: FeatureCopyProps) {
   const feature = TALOS_FEATURES[activeIndex] ?? TALOS_FEATURES[0];
   const total = TALOS_FEATURES.length;
 
@@ -50,28 +52,30 @@ export function FeatureCopy({ activeIndex }: FeatureCopyProps) {
           animate="visible"
           exit="exit"
         >
-          <motion.div variants={itemVariants} className="flex items-center justify-center lg:justify-start gap-3">
-            <span className="font-mono text-[10px] tracking-[0.25em] text-white/50">
-              {String(activeIndex + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}
-            </span>
-            <div className="flex items-center gap-1.5" aria-hidden="true">
-              {TALOS_FEATURES.map((item, index) => (
-                <span
-                  key={item.id}
-                  className="h-[3px] rounded-full transition-all duration-500"
-                  style={{
-                    width: index === activeIndex ? 28 : 12,
-                    backgroundColor:
-                      index === activeIndex ? feature.accentColor : 'rgba(255,255,255,0.2)',
-                  }}
-                />
-              ))}
-            </div>
-          </motion.div>
+          {showProgress && (
+            <motion.div variants={itemVariants} className="flex items-center justify-center lg:justify-start gap-3">
+              <span className="font-mono text-[10px] tracking-[0.25em] text-white/50">
+                {String(activeIndex + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}
+              </span>
+              <div className="flex items-center gap-1.5" aria-hidden="true">
+                {TALOS_FEATURES.map((item, index) => (
+                  <span
+                    key={item.id}
+                    className="h-[3px] rounded-full transition-all duration-500"
+                    style={{
+                      width: index === activeIndex ? 28 : 12,
+                      backgroundColor:
+                        index === activeIndex ? feature.accentColor : 'rgba(255,255,255,0.2)',
+                    }}
+                  />
+                ))}
+              </div>
+            </motion.div>
+          )}
 
           <motion.p
             variants={itemVariants}
-            className="mt-5 font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.3em] text-white/50"
+            className={`${showProgress ? 'mt-5' : 'mt-0'} font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.3em] text-white/50`}
           >
             {feature.category}
           </motion.p>
@@ -105,7 +109,7 @@ export function FeatureCopy({ activeIndex }: FeatureCopyProps) {
 
           <motion.ul
             variants={itemVariants}
-            className="mt-5 flex flex-wrap gap-2 justify-center lg:justify-start"
+            className="mt-5 hidden sm:flex flex-wrap gap-2 justify-center lg:justify-start"
           >
             {feature.tags.map((tag) => (
               <li
